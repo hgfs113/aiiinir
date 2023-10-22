@@ -17,17 +17,17 @@ class CHATGPT:
             verbose=False,
         )
 
-        template = """Используя следующий контекст ответь на вопрос пользователя.
+        template = """Используя следующий контекст ответь на вопрос. Отвечай на русском языке.
         Если ты не знаешь ответ, скажи что не знаешь, не пытайся придумать ответ.
         Контекст: {context}
         Вопрос: {question}
         Выведи только полезный ответ и ничего более.
-        Полезный ответ:
+        Ответ:
         """
         prompt = PromptTemplate(
             template=template,
             input_variables=['context', 'question'])
-        loader = DirectoryLoader("app/docs/", glob="*.csv", loader_cls=MyDocLoader)
+        loader = DirectoryLoader("app/docs/", glob="*", loader_cls=MyDocLoader)
         texts = loader.load()
         embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
@@ -35,7 +35,7 @@ class CHATGPT:
             cache_folder="app/sentences",
         )
         db = FAISS.from_documents(texts, embeddings)
-        retriever = db.as_retriever(search_kwargs={'k': 2})
+        retriever = db.as_retriever(search_kwargs={'k': 6})
 
         self.qa_llm = RetrievalQA.from_chain_type(llm=llm,
                                      chain_type='stuff',

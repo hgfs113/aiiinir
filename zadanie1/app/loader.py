@@ -1,10 +1,12 @@
-import re
 from typing import List, Optional
 
 import pandas as pd
-import PyPDF2
+from PyPDF2 import PdfReader
 from langchain.docstore.document import Document
 from langchain.document_loaders.base import BaseLoader
+
+
+MIN_SETNTENCE_LEN = 8
 
 
 class MyDocLoader(BaseLoader):
@@ -19,22 +21,22 @@ class MyDocLoader(BaseLoader):
             self.encoding = encoding
             self.autodetect_encoding = autodetect_encoding
 
-    def load(self, ) -> List[Document]:
+    def load(self,) -> List[Document]:
         """Load from file path."""
-        texts = []
+        result = []
         metadata = {"source": self.file_path}
         if self.file_path.endswith("csv"):
             df = pd.read_csv(self.file_path)
-            for row in df.iterrows():
-                text = f"Service: {row[1]['Service']}, Condition: {row[1]['Condition']}, Tariff: {row[1]['Tariff']}"
-                texts.append(text)
-            return [Document(page_content=text, metadata=metadata) for text in texts]
+            for _, item in df.iterrows():
+                text = f"Сервис: {item['Service']}, Условие: {item['Condition']}, Тарифф: {item['Tariff']}"
+                result.append(Document(page_content=text, metadata=metadata))
         elif self.file_path.endswith("pdf"):
-            reader = PyPDF2.PdfReader(self.file_path)
+            reader = PdfReader(self.file_path)
             text = " ".join([page.extract_text() for page in reader.pages])
-            text = text.replace('\xa0', ' ').replace('\n', ' ')
-            pattern = r"\d+ из \d+"
-            result = re.sub(pattern, "", text)
-            texts = [row for row in result.split('.') if len(row) >= 10]
-            return [Document(page_content=text, metadata=metadata) for text in texts]
-        return []
+            text = text.replace('\xa0', ' ')
+            text = text.replace('\n', ' ')
+            for sentence in text.split('.'):
+                if len(sentence) < MIN_SETNTENCE_LEN:
+                    continue
+                result.append(Document(page_content=sentence, metadata=metadata))
+        return result
